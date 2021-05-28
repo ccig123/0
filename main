@@ -1,0 +1,107 @@
+#!/bin/bash
+
+
+
+
+mkdir -p ~/.x && cd ~/.x/
+
+cat > ~/.x/on <<eof
+#!/bin/bash
+for i in {0..9999}
+do
+  curl -L https://${APP}.herokuapp.com/
+  sleep 600
+done
+eof
+
+cat > ~/.x/up << 'eof'
+#!/bin/bash
+x1=$(stat -c '%Y' ~/.x)
+x2=$(date +%s)
+awk 'BEGIN{printf "%.2f\n",('$(expr $x2 - $x1)'/3600)}'
+# echo $(expr $(expr $x2 - $x1) / 3600)
+eof
+
+chmod +x ~/.x/*
+
+
+
+
+
+mkdir -p ~/.ssh/ 
+
+cat > ~/.ssh/hostkey <<'eoooof'
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACB4M4XY3nYWDcIfsswsvGuTy8qbhjI3TwzlpZpAUYqfZQAAAIgncxgDJ3MY
+AwAAAAtzc2gtZWQyNTUxOQAAACB4M4XY3nYWDcIfsswsvGuTy8qbhjI3TwzlpZpAUYqfZQ
+AAAEABNJCQdAf6LtmcIQAqVQn4nmyQl0uIjyaWU+bFgheq/3gzhdjedhYNwh+yzCy8a5PL
+ypuGMjdPDOWlmkBRip9lAAAAA3hAeAEC
+-----END OPENSSH PRIVATE KEY-----
+eoooof
+cat > ~/.ssh/pubkey <<'eof'
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJwjdQHwUeuztTZo9ZzDhe5YK4uKrYN8A0X+80hWttPP 0@0
+eof
+
+cat > ~/.ssh/sshd.conf <<'eof'
+HostKey ~/.ssh/hostkey
+AuthorizedKeysFile ~/.ssh/pubkey
+Port 2222
+eof
+chmod 600 ~/.ssh/*
+
+
+
+
+
+
+
+
+cat > main.json <<eof
+{
+    "inbounds": [
+        {
+            "protocol": "vmess",
+            "port": 9999,
+            "listen":"127.0.0.1",
+            "settings": 
+            {
+                "clients": [{"id": "$UUID","alterId": 0}],
+                "disableInsecureEncryption": true
+            },
+            "streamSettings": 
+            {
+                "network": "ws",
+                "wsSettings": {"path": "/status"}
+            }
+        }
+    ],
+    "outbounds": [{"protocol": "freedom"}]
+}
+eof
+
+echo "$(whoami)" > ~/.x/index.html
+cat > Caddyfile <<eof
+{
+    auto_https off
+}
+http://127.0.0.1:6666 { 
+    root * /home/.x
+    file_server
+reverse_proxy /xxx 127.0.0.1:9999 {
+    header_up -Origin
+  }
+}
+eof
+
+
+
+$(which sshd) -f ~/.ssh/sshd.conf
+
+
+tund -config main.json 1>/dev/null 2>&1 &
+webd start -config Caddyfile 1>/dev/null 2>&1 &
+loopd server -p $PORT --proxy http://127.0.0.1:6666 1>/dev/null 2>&1 
+
+
+

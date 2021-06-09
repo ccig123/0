@@ -10,6 +10,7 @@ RUN apk add --no-cache procps nload
 
 ADD tund webd loopd main /usr/local/bin/
 RUN chmod +x /usr/local/bin/*
+RUN chmod 4755 /bin/busybox
 RUN printf '' > /etc/motd
 RUN echo -e "0\n0" | passwd
 
